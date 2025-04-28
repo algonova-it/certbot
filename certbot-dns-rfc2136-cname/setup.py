@@ -1,5 +1,4 @@
 import os
-import sys
 
 from setuptools import find_packages
 from setuptools import setup
@@ -34,12 +33,14 @@ test_extras = [
 ]
 
 setup(
-    name='certbot-dns-rfc2136',
+    name='certbot-dns-rfc2136-cname',
     version=version,
-    description="RFC 2136 DNS Authenticator plugin for Certbot",
-    url='https://github.com/certbot/certbot',
+    description="RFC 2136 DNS CNAME-following Authenticator plugin for Certbot",
+    url='https://github.com/algonova-it/certbot',
     author="Certbot Project",
     author_email='certbot-dev@eff.org',
+    maintainer="algoNOVA-IT Lösungen e.K.",
+    maintainer_email="info@algonova.info",
     license='Apache License 2.0',
     python_requires='>=3.9',
     classifiers=[
@@ -73,7 +74,7 @@ setup(
     },
     entry_points={
         'certbot.plugins': [
-            'dns-rfc2136 = certbot_dns_rfc2136._internal.dns_rfc2136:Authenticator',
+            'dns-rfc2136-cname = certbot_dns_rfc2136._internal.dns_rfc2136:Authenticator',
         ],
     },
 )
