@@ -3,7 +3,7 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
-version = '4.1.0.dev0'
+version = '4.1.0.dev1'
 
 install_requires = [
     # This version was chosen because it is the version packaged in RHEL 9 and Debian unstable. It

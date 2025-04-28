@@ -216,12 +216,11 @@ class _RFC2136Client:
 
     def _find_domain(self, record_name: str) -> tuple[str, str]:
         """
-        Find the closest domain with an SOA record for a given domain name,
-        optionally following CNAMEs.
+        Find the authoritative zone for a given record name.
 
         :param str record_name: The record name for which to find the closest SOA record.
-        :returns: The domain, if found.
-        :rtype: str
+        :returns: The domain or zone, and the record name or the final resolved CNAME.
+        :rtype: Tuple[str, str]
         :raises certbot.errors.PluginError: if no SOA record can be found.
         """
 
