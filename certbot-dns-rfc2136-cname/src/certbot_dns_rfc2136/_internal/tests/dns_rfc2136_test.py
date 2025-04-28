@@ -118,7 +118,7 @@ class RFC2136ClientTest(unittest.TestCase):
         from certbot_dns_rfc2136._internal.dns_rfc2136 import _RFC2136Client
 
         self.rfc2136_client = _RFC2136Client(SERVER, PORT, NAME, SECRET, dns.tsig.HMAC_MD5,
-        False, TIMEOUT)
+        False, False, 0, TIMEOUT)
 
     @mock.patch("dns.query.tcp")
     def test_add_txt_record(self, query_mock):
@@ -126,7 +126,8 @@ class RFC2136ClientTest(unittest.TestCase):
         # _find_domain | pylint: disable=protected-access
         # workaround for wont-fix https://github.com/python/mypy/issues/2427 that works with
         # both strict and non-strict mypy
-        setattr(self.rfc2136_client, '_find_domain', mock.MagicMock(return_value="example.com"))
+        setattr(self.rfc2136_client, '_find_domain',
+                mock.MagicMock(side_effect=lambda record_name: ("example.com", record_name)))
 
         self.rfc2136_client.add_txt_record("bar", "baz", 42)
 
@@ -139,7 +140,8 @@ class RFC2136ClientTest(unittest.TestCase):
         # _find_domain | pylint: disable=protected-access
         # workaround for wont-fix https://github.com/python/mypy/issues/2427 that works with
         # both strict and non-strict mypy
-        setattr(self.rfc2136_client, '_find_domain', mock.MagicMock(return_value="example.com"))
+        setattr(self.rfc2136_client, '_find_domain',
+                mock.MagicMock(side_effect=lambda record_name: ("example.com", record_name)))
 
         with pytest.raises(errors.PluginError):
             self.rfc2136_client.add_txt_record("bar", "baz", 42)
@@ -150,7 +152,8 @@ class RFC2136ClientTest(unittest.TestCase):
         # _find_domain | pylint: disable=protected-access
         # workaround for wont-fix https://github.com/python/mypy/issues/2427 that works with
         # both strict and non-strict mypy
-        setattr(self.rfc2136_client, '_find_domain', mock.MagicMock(return_value="example.com"))
+        setattr(self.rfc2136_client, '_find_domain',
+                mock.MagicMock(side_effect=lambda record_name: ("example.com", record_name)))
 
         with pytest.raises(errors.PluginError):
             self.rfc2136_client.add_txt_record("bar", "baz", 42)
@@ -161,7 +164,8 @@ class RFC2136ClientTest(unittest.TestCase):
         # _find_domain | pylint: disable=protected-access
         # workaround for wont-fix https://github.com/python/mypy/issues/2427 that works with
         # both strict and non-strict mypy
-        setattr(self.rfc2136_client, '_find_domain', mock.MagicMock(return_value="example.com"))
+        setattr(self.rfc2136_client, '_find_domain',
+                mock.MagicMock(side_effect=lambda record_name: ("example.com", record_name)))
 
         self.rfc2136_client.del_txt_record("bar", "baz")
 
@@ -174,7 +178,8 @@ class RFC2136ClientTest(unittest.TestCase):
         # _find_domain | pylint: disable=protected-access
         # workaround for wont-fix https://github.com/python/mypy/issues/2427 that works with
         # both strict and non-strict mypy
-        setattr(self.rfc2136_client, '_find_domain', mock.MagicMock(return_value="example.com"))
+        setattr(self.rfc2136_client, '_find_domain',
+                mock.MagicMock(side_effect=lambda record_name: ("example.com", record_name)))
 
         with pytest.raises(errors.PluginError):
             self.rfc2136_client.del_txt_record("bar", "baz")
@@ -185,7 +190,8 @@ class RFC2136ClientTest(unittest.TestCase):
         # _find_domain | pylint: disable=protected-access
         # workaround for wont-fix https://github.com/python/mypy/issues/2427 that works with
         # both strict and non-strict mypy
-        setattr(self.rfc2136_client, '_find_domain', mock.MagicMock(return_value="example.com"))
+        setattr(self.rfc2136_client, '_find_domain',
+                mock.MagicMock(side_effect=lambda record_name: ("example.com", record_name)))
 
         with pytest.raises(errors.PluginError):
             self.rfc2136_client.del_txt_record("bar", "baz")
@@ -197,7 +203,7 @@ class RFC2136ClientTest(unittest.TestCase):
         setattr(self.rfc2136_client, '_query_soa', mock.MagicMock(side_effect=[False, False, True]))
 
         # _find_domain | pylint: disable=protected-access
-        domain = self.rfc2136_client._find_domain('foo.bar.'+DOMAIN)
+        domain, name = self.rfc2136_client._find_domain('foo.bar.'+DOMAIN)
 
         assert domain == DOMAIN
 

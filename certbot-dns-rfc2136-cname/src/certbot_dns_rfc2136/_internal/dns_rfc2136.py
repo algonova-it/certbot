@@ -1,6 +1,6 @@
 """DNS Authenticator using RFC 2136 Dynamic Updates."""
 import logging
-from typing import Any
+from typing import Any, Union
 from typing import Callable
 from typing import cast
 from typing import Optional
@@ -11,6 +11,7 @@ import dns.name
 import dns.query
 import dns.rdataclass
 import dns.rdatatype
+import dns.resolver
 import dns.tsig
 import dns.tsigkeyring
 import dns.update
@@ -48,16 +49,20 @@ class Authenticator(dns_common.DNSAuthenticator):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.credentials: Optional[CredentialsConfiguration] = None
+        self.follow: bool = False
+        self.depth: Union[int, str] = 1
 
     @classmethod
     def add_parser_arguments(cls, add: Callable[..., None],
                              default_propagation_seconds: int = 60) -> None:
         super().add_parser_arguments(add, default_propagation_seconds=60)
         add('credentials', help='RFC 2136 credentials INI file.')
+        add('follow', action='store_true', help='Follow CNAMEs for DNS-01 challenges.')
+        add('depth', help='Maximum number of CNAMEs to follow (integer or "auto").')
 
     def more_info(self) -> str:
         return 'This plugin configures a DNS TXT record to respond to a dns-01 challenge using ' + \
-               'RFC 2136 Dynamic Updates.'
+               'RFC 2136 Dynamic Updates. It can follow CNAMEs for the challenge.'
 
     def _validate_credentials(self, credentials: CredentialsConfiguration) -> None:
         server = cast(str, credentials.conf('server'))
@@ -82,6 +87,23 @@ class Authenticator(dns_common.DNSAuthenticator):
         )
 
     def _perform(self, _domain: str, validation_name: str, validation: str) -> None:
+        follow_conf = self.conf('follow')
+        if not follow_conf is None:
+            self.follow = follow_conf
+
+        depth_conf = self.conf('depth')
+        if not depth_conf is None:
+            if depth_conf.lower() == 'auto':
+                self.depth = 'auto'
+            else:
+                try:
+                    depth_int = int(depth_conf)
+                    if depth_int < 1:
+                        raise errors.PluginError("CNAME depth must be >=1 or 'auto'.")
+                    self.depth = depth_int
+                except ValueError:
+                    raise errors.PluginError("Invalid value for CNAME depth: must be an integer or 'auto'.")
+
         self._get_rfc2136_client().add_txt_record(validation_name, validation, self.ttl)
 
     def _cleanup(self, _domain: str, validation_name: str, validation: str) -> None:
@@ -98,7 +120,9 @@ class Authenticator(dns_common.DNSAuthenticator):
                               cast(str, self.credentials.conf('name')),
                               cast(str, self.credentials.conf('secret')),
                               self.ALGORITHMS.get(algorithm, dns.tsig.HMAC_MD5),
-                              (self.credentials.conf('sign_query') or '').upper() == "TRUE")
+                              (self.credentials.conf('sign_query') or '').upper() == "TRUE",
+                              self.follow,
+                              (0 if self.depth == "auto" else self.depth))
 
 
 class _RFC2136Client:
@@ -107,6 +131,7 @@ class _RFC2136Client:
     """
     def __init__(self, server: str, port: int, key_name: str, key_secret: str,
                  key_algorithm: dns.name.Name, sign_query: bool,
+                 cname_follow: bool, cname_depth: int,
                  timeout: int = DEFAULT_NETWORK_TIMEOUT) -> None:
         self.server = server
         self.port = port
@@ -115,6 +140,8 @@ class _RFC2136Client:
         })
         self.algorithm = key_algorithm
         self.sign_query = sign_query
+        self.cname_follow = cname_follow
+        self.cname_depth = cname_depth
         self._default_timeout = timeout
 
     def add_txt_record(self, record_name: str, record_content: str, record_ttl: int) -> None:
@@ -127,7 +154,7 @@ class _RFC2136Client:
         :raises certbot.errors.PluginError: if an error occurs communicating with the DNS server
         """
 
-        domain = self._find_domain(record_name)
+        domain, record_name = self._find_domain(record_name)
 
         n = dns.name.from_text(record_name)
         o = dns.name.from_text(domain)
@@ -162,7 +189,7 @@ class _RFC2136Client:
         :raises certbot.errors.PluginError: if an error occurs communicating with the DNS server
         """
 
-        domain = self._find_domain(record_name)
+        domain, record_name = self._find_domain(record_name)
 
         n = dns.name.from_text(record_name)
         o = dns.name.from_text(domain)
@@ -187,9 +214,10 @@ class _RFC2136Client:
             raise errors.PluginError('Received response from server: {0}'
                                      .format(dns.rcode.to_text(rcode)))
 
-    def _find_domain(self, record_name: str) -> str:
+    def _find_domain(self, record_name: str) -> tuple[str, str]:
         """
-        Find the closest domain with an SOA record for a given domain name.
+        Find the closest domain with an SOA record for a given domain name,
+        optionally following CNAMEs.
 
         :param str record_name: The record name for which to find the closest SOA record.
         :returns: The domain, if found.
@@ -197,12 +225,43 @@ class _RFC2136Client:
         :raises certbot.errors.PluginError: if no SOA record can be found.
         """
 
+        # Follow CNAMEs to find the correct base domain
+
+        if self.cname_follow:
+            visited = set()
+            hops = 0
+
+            while True:
+                if record_name in visited:
+                    raise errors.PluginError(f"CNAME loop detected at {record_name}")
+
+                visited.add(record_name)
+
+                try:
+                    answers = dns.resolver.resolve(record_name, 'CNAME')
+                    target = str(answers[0].target).rstrip('.')
+                    logger.debug(f"Following CNAME: {record_name} -> {target}")
+                    record_name = target
+                    hops += 1
+
+                    if 0 < self.cname_depth < hops:
+                        raise errors.PluginError(f"Reached maximum CNAME depth ({self.cname_depth}).")
+
+                except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.LifetimeTimeout,
+                        dns.exception.DNSException):
+                    # No CNAME found, stop
+                    logger.debug(
+                        f"No further CNAME for {record_name}, proceeding to find base domain.")
+                    break
+
+        # Continue with upstream code
+
         domain_name_guesses = dns_common.base_domain_name_guesses(record_name)
 
         # Loop through until we find an authoritative SOA record
         for guess in domain_name_guesses:
             if self._query_soa(guess):
-                return guess
+                return guess, record_name
 
         raise errors.PluginError('Unable to determine base domain for {0} using names: {1}.'
                                  .format(record_name, domain_name_guesses))
