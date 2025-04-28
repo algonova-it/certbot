@@ -2,7 +2,7 @@ import sys
 import pytest
 from unittest import mock
 from certbot.errors import PluginError
-from certbot_dns_rfc2136._internal.dns_rfc2136 import _RFC2136Client
+from certbot_dns_rfc2136_cname._internal.dns_rfc2136 import _RFC2136Client
 import dns.name
 import dns.rdtypes
 import dns.rdatatype

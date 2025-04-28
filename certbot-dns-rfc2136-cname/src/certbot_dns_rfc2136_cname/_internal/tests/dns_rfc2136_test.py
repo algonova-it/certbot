@@ -1,4 +1,4 @@
-"""Tests for certbot_dns_rfc2136._internal.dns_rfc2136."""
+"""Tests for certbot_dns_rfc2136_cname._internal.dns_rfc2136."""
 
 import sys
 import unittest
@@ -26,7 +26,7 @@ TIMEOUT = 45
 class AuthenticatorTest(test_util.TempDirTestCase, dns_test_common.BaseAuthenticatorTest):
 
     def setUp(self):
-        from certbot_dns_rfc2136._internal.dns_rfc2136 import Authenticator
+        from certbot_dns_rfc2136_cname._internal.dns_rfc2136 import Authenticator
 
         super().setUp()
 
@@ -79,9 +79,9 @@ class AuthenticatorTest(test_util.TempDirTestCase, dns_test_common.BaseAuthentic
             self.auth.perform([self.achall])
 
     @test_util.patch_display_util()
-    @mock.patch('certbot_dns_rfc2136._internal.dns_rfc2136._RFC2136Client')
+    @mock.patch('certbot_dns_rfc2136_cname._internal.dns_rfc2136._RFC2136Client')
     def test_valid_algorithm_passes(self, client, unused_mock_get_utility):
-        from certbot_dns_rfc2136._internal.dns_rfc2136 import Authenticator
+        from certbot_dns_rfc2136_cname._internal.dns_rfc2136 import Authenticator
 
         config = VALID_CONFIG.copy()
         config["rfc2136_algorithm"] = "HMAC-sha512"
@@ -115,7 +115,7 @@ class AuthenticatorTest(test_util.TempDirTestCase, dns_test_common.BaseAuthentic
 class RFC2136ClientTest(unittest.TestCase):
 
     def setUp(self):
-        from certbot_dns_rfc2136._internal.dns_rfc2136 import _RFC2136Client
+        from certbot_dns_rfc2136_cname._internal.dns_rfc2136 import _RFC2136Client
 
         self.rfc2136_client = _RFC2136Client(SERVER, PORT, NAME, SECRET, dns.tsig.HMAC_MD5,
         False, False, 0, TIMEOUT)

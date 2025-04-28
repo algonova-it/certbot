@@ -74,7 +74,7 @@ setup(
     },
     entry_points={
         'certbot.plugins': [
-            'dns-rfc2136-cname = certbot_dns_rfc2136._internal.dns_rfc2136:Authenticator',
+            'dns-rfc2136-cname = certbot_dns_rfc2136_cname._internal.dns_rfc2136:Authenticator',
         ],
     },
 )
