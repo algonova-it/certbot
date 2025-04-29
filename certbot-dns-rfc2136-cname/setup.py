@@ -3,7 +3,7 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
-version = '4.1.0.dev1'
+version = '4.1.0.dev2'
 
 install_requires = [
     # This version was chosen because it is the version packaged in RHEL 9 and Debian unstable. It
@@ -19,8 +19,8 @@ else:
         # We specify the minimum acme and certbot version as the current plugin
         # version for simplicity. See
         # https://github.com/certbot/certbot/issues/8761 for more info.
-        f'acme>={version}',
-        f'certbot>={version}',
+        f'acme>=2.0.0',
+        f'certbot>=2.0.0',
     ])
 
 docs_extras = [
@@ -35,7 +35,7 @@ test_extras = [
 setup(
     name='certbot-dns-rfc2136-cname',
     version=version,
-    description="RFC 2136 DNS CNAME-following Authenticator plugin for Certbot",
+    description="CNAME-following RFC 2136 DNS Authenticator plugin for Certbot",
     url='https://github.com/algonova-it/certbot',
     author="Certbot Project",
     author_email='certbot-dev@eff.org',
